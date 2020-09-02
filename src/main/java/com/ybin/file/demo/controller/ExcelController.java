@@ -1,9 +1,9 @@
 package com.ybin.file.demo.controller;
 
-import com.alibaba.fastjson.JSONObject;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @Author: bingy
@@ -34,35 +37,41 @@ public class ExcelController {
     @ApiOperation("上传Excel")
     public String dataImport(@RequestParam("file") MultipartFile file) {
         try {
-            importData(file.getInputStream());
-            return "ok";
+            InputStream in = file.getInputStream();
+            XSSFWorkbook workbook = new XSSFWorkbook(in);
+            in.close();
+            int newRowIndex = 0;
+            //读取第一个sheet
+            XSSFSheet sheet = workbook.getSheetAt(0);
+            XSSFSheet newSheet = workbook.createSheet("newSheet");
+            //从第2行读取到最后一行
+            for (int rowIndex=1; rowIndex<sheet.getLastRowNum(); rowIndex++) {
+                XSSFRow row = sheet.getRow(rowIndex);
+                Cell cell0 = row.getCell(0);
+                String cellValue0 = cell0.getStringCellValue();
+                Cell cell1 = row.getCell(1);
+                String cellValue1 = cell1.getStringCellValue();
+                String[] go = cellValue1.split(",");
+                List<String> list = Arrays.asList(go);
+                for (String goValue:list) {
+                    Row newRow = newSheet.createRow(newRowIndex);
+                    newRowIndex++;
+                    Cell newCell0 = newRow.createCell(0);
+                    newCell0.setCellValue(cellValue0);
+                    Cell newCell1 = newRow.createCell(1);
+                    newCell1.setCellValue(goValue);
+                    //System.out.println(goValue);
+                }
+            }
+            workbook.setActiveSheet(1);
+            FileOutputStream fileOut = new FileOutputStream("d:\\go.xlsx");
+            workbook.write(fileOut);
+            // 操作完毕后，记得要将打开的 XSSFWorkbook 关闭
+            workbook.close();
+            return "ok!文件已经保存在\"D:go.xlsx\"";
         } catch (Exception e) {
             e.printStackTrace();
-            return "err";
+            return "error";
         }
-    }
-
-    //操作数据
-    private void importData(InputStream in) throws IOException {
-        XSSFWorkbook workbook = new XSSFWorkbook(in);
-        in.close();
-        //读取第一个sheet
-        XSSFSheet sheet = workbook.getSheetAt(0);
-        //从第2行读取到最后一行
-        for (int rowIndex = 2; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-            try {
-                // XSSFRow 代表一行数据
-                XSSFRow row = sheet.getRow(rowIndex);
-                System.out.println(JSONObject.toJSONString(row));
-                //获取单元格信息
-                XSSFCell dateCell = row.getCell(0);
-                System.out.println(JSONObject.toJSONString(dateCell));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        }
-        // 操作完毕后，记得要将打开的 XSSFWorkbook 关闭
-        workbook.close();
     }
 }
